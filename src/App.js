@@ -1,15 +1,27 @@
 import './App.css';
 import {
+    Button,
+    ButtonGroup,
     Container,
     Form,
+    FormCheck,
     FormControl,
     FormGroup,
+    FormSelect,
     ProgressBar,
     Table
 } from "react-bootstrap";
 import {Component} from "react";
+import FormCheckInput from "react-bootstrap/FormCheckInput";
+import FormCheckLabel from "react-bootstrap/FormCheckLabel";
 
 const _ = require('lodash');
+
+if (process.env.NODE_ENV === 'production') {
+    console.log = () => {}
+    console.error = () => {}
+    console.debug = () => {}
+}
 
 class MemoryPartition {
     constructor(start, size) {
@@ -91,7 +103,10 @@ class Memory {
         usage = usage.toLowerCase();
         for (let i = 0; i < indices.length; i++) {
             let partition = this.partitions[indices[i]];
-            if (partition.usage.toLowerCase() !== usage || partition.size < requiredSize) {
+            if (partition.usage.toLowerCase() !== usage) {
+                continue;
+            }
+            if (partition.size < requiredSize) {
                 continue;
             }
             return partition;
@@ -179,12 +194,13 @@ class App extends Component {
             jobRuntimes: "10 15 20 8 15",
             algo: 0,
             compaction: true,
-            numberOfGuests: 2,
+            fullArithmetic: true,
             generatedDom: null
         };
 
         this.handleInputChange = this.handleInputChange.bind(this);
         this.tryCalculate = this.tryCalculate.bind(this);
+        this.tryRandomize = this.tryRandomize.bind(this);
     }
 
     handleInputChange(event) {
@@ -199,8 +215,25 @@ class App extends Component {
         });
     }
 
-    tryCalculate(event) {
-        event.preventDefault()
+    tryRandomize() {
+        let n = Math.floor(Math.random() * 10 + 5);
+        let sizes = [], aTimes = [], rTimes = [];
+        let allowedSize = (this.state.mmSize - this.state.osSize) / 2 / 10;
+        for(let i = 0; i < n; i++){
+            sizes.push((Math.floor(Math.random() * allowedSize + 1) * 10) + Math.floor(Math.random() * 10));
+            aTimes.push(Math.floor(Math.random() * 10));
+            rTimes.push(Math.floor(Math.random() * 10 + 10));
+        }
+        this.setState({
+            jobSizes: sizes.join(" "),
+            jobArrivalTimes: aTimes.join(" "),
+            jobRuntimes: rTimes.join(" "),
+            generatedDom: null
+        });
+        setTimeout(() => this.tryCalculate(), 1);
+    }
+
+    tryCalculate() {
         let jobSizes = this.state.jobSizes.split(" ").map(i => parseInt(i));
         let jobArrivalTimes = this.state.jobArrivalTimes.trim().length < 1 ? (new Array(jobSizes.length).fill(0)) : this.state.jobArrivalTimes.split(" ").map(i => parseInt(i));
         let jobRuntimes = this.state.jobRuntimes.split(" ").map(i => parseInt(i));
@@ -231,6 +264,8 @@ class App extends Component {
         let lastChangeTime = null;
         let tasksFinished = true;
         let time = 0;
+        let maxArrival = Math.max(...jobArrivalTimes);
+        let maxRuntime = Math.max(...jobRuntimes);
 
         let mem = new Memory(this.state.mmSize);
         mem.partition(this.state.osSize, "OS", "Unallocated");
@@ -238,9 +273,11 @@ class App extends Component {
 
         memoryFramesGUI.push([lastChangeTime, time, _.cloneDeep(mem)]);
         lastChangeTime = 0;
+        let freedMemory;
         do {
             tasksFinished = true;
             let didSomething = false;
+            freedMemory = false;
 
             for (let i = 0; i < jobs.length; i++) {
                 let job = jobs[i];
@@ -252,17 +289,21 @@ class App extends Component {
                 if (job.startedTime !== null) {
                     if ((job.origRunTime + job.startedTime) === time) {
 
-                        /*let ourPartition = mem.getAvailablePartitionWithUsage(mem.indices(), job.size, `Job ${i + 1}`);
-                        if (ourPartition === null) continue;
-                        ourPartition.usage = "Unallocated";*/
-                        freeMem += job.size;
+                        if (!this.state.fullArithmetic) {
+                            let ourPartition = mem.getAvailablePartitionWithUsage(mem.indices(), job.size, `Job ${i + 1}`);
+                            if (ourPartition === null) continue;
+                            ourPartition.usage = "Unallocated";
+                        } else {
+                            freeMem += job.size;
+                        }
 
                         job.finishedTime = time;
                         didSomething = true;
+                        freedMemory = true;
                         continue;
                     }
                 } else {
-                    /*let indices;
+                    let indices;
                     if (this.state.algo === 0) {
                         indices = mem.indices(); // first-fit
                     } else if (this.state.algo === 1) {
@@ -271,46 +312,59 @@ class App extends Component {
                         indices = mem.sizeSortedIndicesReverse(); // worst-fit
                     }
 
-                    let availablePartition = mem.getAvailablePartitionWithUsage(indices, job.size, "Unallocated")
-                    if (availablePartition === null) {
-                        continue;
+                    if (!this.state.fullArithmetic) {
+                        let availablePartition = mem.getAvailablePartitionWithUsage(indices, job.size, "Unallocated")
+                        if (availablePartition === null) {
+                            continue;
+                        }
+                        mem.partition(availablePartition.start + job.size, `Job ${i + 1}`, "Unallocated")
+                        job.currentMemory = mem.sumSizesOfUsage("Unallocated");
+                    } else {
+                        if (job.size > freeMem) {
+                            continue;
+                        }
+                        freeMem -= job.size;
+                        job.currentMemory = freeMem;
                     }
-                    mem.partition(availablePartition.start + job.size, `Job ${i + 1}`, "Unallocated")*/
 
-
-                    if (job.size > freeMem) {
-                        continue;
-                    }
-                    freeMem -= job.size;
-
-                    job.currentMemory = freeMem;//mem.sumSizesOfUsage("Unallocated");
                     job.startedTime = time;
                     job.waitTime = time - job.arrivalTime;
                     didSomething = true;
+                    tasksFinished = false;
                 }
 
                 if (job.finishedTime === null) {
                     tasksFinished = false;
                 }
             }
-
-            if (didSomething) {
-                /*if (this.state.compaction) {
-                    mem.tryCompact("Unallocated");
-                } else {
-                    mem.tryCoalesce("Unallocated");
+            if (!this.state.fullArithmetic) {
+                if (didSomething) {
+                    if (this.state.compaction) {
+                        mem.tryCompact("Unallocated");
+                    } else {
+                        mem.tryCoalesce("Unallocated");
+                    }
+                    memoryFramesGUI.push([lastChangeTime, time, _.cloneDeep(mem)]);
+                    lastChangeTime = time;
                 }
-                memoryFramesGUI.push([lastChangeTime, time, _.cloneDeep(mem)]);*/
-                lastChangeTime = time;
+                // hack to re-do the same clock cycle because a job freed memory...
+                // so that available jobs that arrived at that same exact time can take it with no wait time
+                if (!freedMemory) {
+                    time++;
+                }
+            } else {
+                time++;
             }
-            time++;
-        } while (!tasksFinished && time < 1000);
+        } while ((!tasksFinished || freedMemory || time <= (maxArrival + maxRuntime)) && time < 100000);
 
         this.setState({
             generatedDom: (
                 <Container>
                     <p>
                         <strong>Usable Memory: </strong>{this.state.mmSize - this.state.osSize}KB
+                    </p>
+                    <p>
+                        <strong>Job Queue Finish Time: </strong>{time} minutes
                     </p>
                     <Table>
                         <thead>
@@ -339,7 +393,7 @@ class App extends Component {
                         }</tbody>
                     </Table>
                     {
-                        /*memoryFramesGUI.map((a, i) => {
+                        this.state.fullArithmetic ? [] : memoryFramesGUI.map((a, i) => {
                             const [pre, post, m] = a;
                             return (<div key={i}>
                                 <strong>{
@@ -347,7 +401,7 @@ class App extends Component {
                                 }: </strong>
                                 <div className="progress">{m.visualize()}</div>
                             </div>);
-                        })*/
+                        })
                     }
                 </Container>
             )
@@ -358,7 +412,7 @@ class App extends Component {
         return (
             <Container>
                 <h1>Multiple Variable Partition Technique (MVT) Solver</h1>
-                <Form onSubmit={this.tryCalculate}>
+                <Form>
                     <FormGroup>
                         <label htmlFor="mmSize">Main Memory Size:</label>
                         <FormControl type="text" name="mmSize" required
@@ -389,12 +443,23 @@ class App extends Component {
                                      value={this.state.jobRuntimes}
                                      onChange={this.handleInputChange}/>
                     </FormGroup>
-                    {/*<FormGroup>
+                    <FormGroup>
+                        <FormCheck>
+                            <FormCheckInput name="fullArithmetic" checked={this.state.fullArithmetic}
+                                            onChange={this.handleInputChange}/>
+                            <FormCheckLabel htmlFor="fullArithmetic">
+                                No simulations? (TO-DO: simulation is unstable on some cases & generally slower)
+                            </FormCheckLabel>
+                        </FormCheck>
+                    </FormGroup>
+                    <FormGroup>
                         <label htmlFor="algo">Algorithm:</label>
                         <FormSelect
                             name="algo"
                             value={this.state.algo}
-                            onChange={this.handleInputChange}>
+                            onChange={this.handleInputChange}
+                            disabled={this.state.fullArithmetic}
+                        >
                             <option value={0}>First Fit</option>
                             <option value={1}>Best Fit</option>
                             <option value={2}>Worst Fit</option>
@@ -403,15 +468,19 @@ class App extends Component {
                     <FormGroup>
                         <FormCheck>
                             <FormCheckInput name="compaction" checked={this.state.compaction}
-                                            onChange={this.handleInputChange}/>
+                                            onChange={this.handleInputChange}
+                                            disabled={this.state.fullArithmetic}/>
                             <FormCheckLabel htmlFor="compaction">Compaction?</FormCheckLabel>
                         </FormCheck>
-                    </FormGroup>*/}
-                    <FormGroup>
-                        <small>* All sizes are in KB, all times are in milliseconds (ms).</small>
                     </FormGroup>
                     <FormGroup>
-                        <FormControl type="submit" value="Submit"/>
+                        <small>* All sizes are in KB, all times are in minutes.</small>
+                    </FormGroup>
+                    <FormGroup>
+                        <ButtonGroup className="d-flex">
+                            <Button onClick={this.tryCalculate} className="w-100">Calculate!</Button>
+                            <Button onClick={this.tryRandomize} className="w-100">Randomize!</Button>
+                        </ButtonGroup>
                     </FormGroup>
                 </Form>
                 <hr/>
