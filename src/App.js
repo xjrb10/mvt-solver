@@ -1,18 +1,13 @@
 import './App.css';
 import {
-    Button,
     Container,
     Form,
-    FormCheck,
     FormControl,
     FormGroup,
-    FormSelect,
     ProgressBar,
     Table
 } from "react-bootstrap";
 import {Component} from "react";
-import FormCheckInput from "react-bootstrap/FormCheckInput";
-import FormCheckLabel from "react-bootstrap/FormCheckLabel";
 
 const _ = require('lodash');
 
@@ -283,7 +278,7 @@ class App extends Component {
                     mem.partition(availablePartition.start + job.size, `Job ${i + 1}`, "Unallocated")*/
 
 
-                    if (job.size > freeMem){
+                    if (job.size > freeMem) {
                         continue;
                     }
                     freeMem -= job.size;
@@ -416,7 +411,7 @@ class App extends Component {
                         <small>* All sizes are in KB, all times are in milliseconds (ms).</small>
                     </FormGroup>
                     <FormGroup>
-                        <FormControl type="submit" value="Submit" />
+                        <FormControl type="submit" value="Submit"/>
                     </FormGroup>
                 </Form>
                 <hr/>
