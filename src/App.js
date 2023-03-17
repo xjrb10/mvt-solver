@@ -7,7 +7,7 @@ import {
     FormCheck,
     FormControl,
     FormGroup,
-    FormSelect,
+    FormSelect, InputGroup,
     ProgressBar,
     Table
 } from "react-bootstrap";
@@ -18,9 +18,12 @@ import FormCheckLabel from "react-bootstrap/FormCheckLabel";
 const _ = require('lodash');
 
 if (process.env.NODE_ENV === 'production') {
-    console.log = () => {}
-    console.error = () => {}
-    console.debug = () => {}
+    console.log = () => {
+    }
+    console.error = () => {
+    }
+    console.debug = () => {
+    }
 }
 
 class MemoryPartition {
@@ -201,6 +204,7 @@ class App extends Component {
         this.handleInputChange = this.handleInputChange.bind(this);
         this.tryCalculate = this.tryCalculate.bind(this);
         this.tryRandomize = this.tryRandomize.bind(this);
+        this.scheduleCalculate = this.scheduleCalculate.bind(this);
     }
 
     handleInputChange(event) {
@@ -219,7 +223,7 @@ class App extends Component {
         let n = Math.floor(Math.random() * 10 + 5);
         let sizes = [], aTimes = [], rTimes = [];
         let allowedSize = (this.state.mmSize - this.state.osSize) / 2 / 10;
-        for(let i = 0; i < n; i++){
+        for (let i = 0; i < n; i++) {
             sizes.push((Math.floor(Math.random() * allowedSize + 1) * 10) + Math.floor(Math.random() * 10));
             aTimes.push(Math.floor(Math.random() * 10));
             rTimes.push(Math.floor(Math.random() * 10 + 10));
@@ -230,6 +234,10 @@ class App extends Component {
             jobRuntimes: rTimes.join(" "),
             generatedDom: null
         });
+        this.scheduleCalculate();
+    }
+
+    scheduleCalculate() {
         setTimeout(() => this.tryCalculate(), 1);
     }
 
@@ -433,9 +441,15 @@ class App extends Component {
                     </FormGroup>
                     <FormGroup>
                         <label htmlFor="jobArrivalTimes">Job Arrival Times:</label>
-                        <FormControl type="text" name="jobArrivalTimes"
-                                     value={this.state.jobArrivalTimes}
-                                     onChange={this.handleInputChange}/>
+                        <InputGroup>
+                            <FormControl type="text" name="jobArrivalTimes"
+                                         value={this.state.jobArrivalTimes}
+                                         onChange={this.handleInputChange}/>
+                            <Button onClick={() => {
+                                this.setState({jobArrivalTimes: ""});
+                                this.scheduleCalculate();
+                            }}>No Arrival Time</Button>
+                        </InputGroup>
                     </FormGroup>
                     <FormGroup>
                         <label htmlFor="jobRuntimes">Job Runtimes:</label>
