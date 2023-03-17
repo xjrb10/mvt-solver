@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/mvt-solver/static/css/main.984a0a6e.css",
+    "main.js": "/mvt-solver/static/js/main.f6fb21e4.js",
+    "static/js/787.92537b23.chunk.js": "/mvt-solver/static/js/787.92537b23.chunk.js",
+    "index.html": "/mvt-solver/index.html",
+    "main.984a0a6e.css.map": "/mvt-solver/static/css/main.984a0a6e.css.map",
+    "main.f6fb21e4.js.map": "/mvt-solver/static/js/main.f6fb21e4.js.map",
+    "787.92537b23.chunk.js.map": "/mvt-solver/static/js/787.92537b23.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.984a0a6e.css",
+    "static/js/main.f6fb21e4.js"
+  ]
+}
