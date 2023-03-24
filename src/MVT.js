@@ -217,7 +217,7 @@ export class MVT extends Component{
                         <strong>Usable Memory: </strong>{this.state.mmSize - this.state.osSize}KB
                     </p>
                     <p>
-                        <strong>Job Queue Finish Time: </strong>{time} minutes
+                        <strong>Job Queue Finish Time: </strong>{Math.max(...jobs.map(job => job.finishedTime))} minutes
                     </p>
                     <Table>
                         <thead>
